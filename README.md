@@ -1,3 +1,3 @@
 # OneCloudDDNS
 
-Обновление IP в DNS записи 1cloud.ru
+Обновление IP в DNS 1cloud.ru
