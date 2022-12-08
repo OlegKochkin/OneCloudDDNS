@@ -1,0 +1,55 @@
+#!/bin/bash
+
+function Now {
+  date +"%d.%m.%Y %H:%M:%S"
+  }
+
+function ChangeOneCloudRecord {
+  Domain=$1
+  SubDomain=$2
+  JSON=$(curl -s -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $ApiKey" "https://api.1cloud.ru/Dns")
+  DomID=$(echo $JSON | jq -r ".[] | select(.Name==\"$Domain\") | .ID")
+  DNSIP=$(echo $JSON | jq -r ".[] | select(.ID==$DomID) | .LinkedRecords[] | select(.HostName==\"$SubDomain\") | .IP")
+  RecID=$(echo $JSON | jq -r ".[] | select(.ID==$DomID) | .LinkedRecords[] | select(.HostName==\"$SubDomain\") | .ID")
+  if [[ "$DNSIP" != "$CurrentIP" ]]
+	then
+	  echo $(Now) Задание на изменение DNS записи $SubDomain.$Domain на $CurrentIP
+	  if [[ $(curl -s -X PUT -H "Content-Type: application/json" -H "Authorization: Bearer $ApiKey" "https://api.1cloud.ru/dns/recorda/$RecID" -d "{\"DomainId\":\"$DomID\", \"IP\":\"$CurrentIP\", \"Name\":\"$SubDomain\"}" | jq -r .IP) == "$CurrentIP" ]]
+		then
+		  echo "$(Now) Адрес $SubDomain.$Domain изменён с $PrevIP на $CurrentIP"
+		else
+		  echo "$(Now) При попытке изменения записи $SubDomain.$Domain произошла ошибка"
+		fi
+	else
+	  echo "$(Now) Адрес на DNS ($DNSIP) для $SubDomain.$Domain равен текущему ($CurrentIP). Изменение не требуется"
+	fi
+  }
+
+# Файл с предыдущим IP
+PrevIPFile=/usr/local/etc/PrevIP.txt
+
+# Получение текущего IP из двух разных источников
+CheckIP1=$(curl -s ifconfig.me)
+CheckIP2=$(curl -s 2ip.ru)
+# Предустановка текущего IP, как пустая строка
+CurrentIP=""
+
+# Если полученные IP из двух источников равны и являются валидным адресом, запоминаем текущий IP, иначе - завершение скрипта
+if [[ $CheckIP1 == $CheckIP2 ]]
+  then
+	ip route get $CheckIP1 > /dev/null 2>&1 && CurrentIP=$CheckIP1 || exit
+  else
+	echo $(Now) Текущие IP из разных источников не равны. IP1 = $CheckIP1, IP2 = $CheckIP2. Завершение скрипта.
+	exit
+  fi
+
+PrevIP=$(test -f $PrevIPFile && cat $PrevIPFile)
+if [[ $PrevIP == $CurrentIP ]]
+  then
+	exit
+  fi
+echo $CurrentIP > $PrevIPFile
+
+ApiKey=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+ChangeOneCloudRecord domain1.example @
+ChangeOneCloudRecord domain2.example www
