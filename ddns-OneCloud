@@ -9,8 +9,8 @@ function ChangeOneCloudRecord {
   SubDomain=$2
   JSON=$(curl -s -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $ApiKey" "https://api.1cloud.ru/Dns")
   DomID=$(echo $JSON | jq -r ".[] | select(.Name==\"$Domain\") | .ID")
-  DNSIP=$(echo $JSON | jq -r ".[] | select(.ID==$DomID) | .LinkedRecords[] | select(.HostName==\"$SubDomain\") | .IP")
-  RecID=$(echo $JSON | jq -r ".[] | select(.ID==$DomID) | .LinkedRecords[] | select(.HostName==\"$SubDomain\") | .ID")
+  DNSIP=$(echo $JSON | jq -r ".[] | select(.ID==$DomID) | .LinkedRecords[] | select(.HostName==\"$SubDomain\") and .TypeRecord==\"A\" | .IP")
+  RecID=$(echo $JSON | jq -r ".[] | select(.ID==$DomID) | .LinkedRecords[] | select(.HostName==\"$SubDomain\") and .TypeRecord==\"A\" | .ID")
   if [[ "$DNSIP" != "$CurrentIP" ]]
 	then
 	  echo $(Now) Задание на изменение DNS записи $SubDomain.$Domain на $CurrentIP
